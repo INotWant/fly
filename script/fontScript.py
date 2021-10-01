@@ -4,7 +4,7 @@ from ImageUtils import miningPoint
 
 if __name__ == '__main__':
     no = 2
-    imageName = "data/font_%s.png" % no
+    imageName = "data/image/font_%s.png" % no
     designFilePath = "data/design/font_%s.json" % no
     customDimension = (80, 80)
     xAxisPointNum = 20
@@ -19,12 +19,13 @@ if __name__ == '__main__':
         for y in range(yAxisPointNum):
             if points[x][y] == 1:
                 count = count + 1
-                targetCoordinates.append((y * 3, 0, (xAxisPointNum - x) * 3 + baseZ))
+                targetCoordinates.append((0, y * 3, (xAxisPointNum - x) * 3 + baseZ))
 
     xAxisNumInStart = 10
     for i in range(count):
         startCoordinates.append((i % xAxisNumInStart * 4, i // xAxisNumInStart * 4, 0))
 
-    design = {"start": startCoordinates, "target": targetCoordinates}
+    targetCoordinatesArr = [targetCoordinates]
+    design = {"start": startCoordinates, "target": targetCoordinatesArr}
     with open(designFilePath, "w") as f:
         json.dump(design, f)
