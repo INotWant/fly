@@ -6,7 +6,7 @@ from ImageUtils import miningPoint
 
 if __name__ == '__main__':
     imagePath = "data/image/%s.png"
-    fonts = ["祝", "福", "祖", "国"]
+    fonts = ["我", "和", "我", "的", "祖", "国"]
     designFilePath = "data/design/blessMotherland.json"
 
     customDimension = (80, 80)

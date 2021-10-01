@@ -9,7 +9,7 @@ class Aircraft:
     __slots__ = (
     "id", "currCoordinate", "tmpTargetCoordinate", "targetCoordinates", "trackCoordinates", "trackMaxLength", "_lock")
 
-    def __init__(self, id):
+    def __init__(self, id, trackMaxLength=None):
         self.id = id
         self.currCoordinate = None
         # 临时目标坐标
@@ -18,7 +18,7 @@ class Aircraft:
         self.targetCoordinates = []
         # 轨迹坐标，相邻元素间隔时间为基本时间单元
         self.trackCoordinates = ([], [], [])
-        self.trackMaxLength = None
+        self.trackMaxLength = trackMaxLength
         # 多线程锁，使获取的 trackCoordinates 最新
         self._lock = threading.Lock()
 
@@ -35,26 +35,22 @@ class Aircraft:
             raise ValueError("coordinate must be a object of Coordinate!")
 
     def setTmpTargetCoordinate(self, x, y, z):
-        assert z >= 0
         self.setTmpTargetCoordinateByObj(Coordinate(x, y, z))
 
     def setTmpTargetCoordinateByObj(self, coordinate):
         if not isinstance(coordinate, Coordinate):
             raise ValueError("coordinate must be a object of Coordinate!")
-        assert coordinate.z >= 0
         self.tmpTargetCoordinate = coordinate
 
     def getTmpTargetCoordinate(self):
         return self.tmpTargetCoordinate
 
     def addFinalTargetCoordinate(self, x, y, z):
-        assert z >= 0
         self.addFinalTargetCoordinateByObj(Coordinate(x, y, z))
 
     def addFinalTargetCoordinateByObj(self, coordinate):
         if not isinstance(coordinate, Coordinate):
             raise ValueError("coordinate must be a object of Coordinate!")
-        assert coordinate.z >= 0
         self.targetCoordinates.append(coordinate)
 
     def setFinalTargetCoordinatesByObj(self, coordinates):

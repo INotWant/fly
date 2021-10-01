@@ -22,7 +22,7 @@ class Controller:
         :param t: 时间间隔
         :param v: 速度
         :param tryMaxNumber: 通过改变 方向向量 避免碰撞的尝试次数
-        :param generateDVPolicy: 生成 方向向量 的策略 --> 注：尽可能保证 z >= 0 ，以保证不进入"地下"
+        :param generateDVPolicy: 生成 方向向量 的策略
         """
         self.aircrafts = aircrafts
         self._isOrder = False
@@ -33,9 +33,8 @@ class Controller:
         if generateDVPolicy is None:
             def defaultGenerateDVPolicy(currAircraft, collisionWithAircraft, tryNumber):
                 """
-                默认的生成方向向量的策略
-                1）第一次尝试时，生成反向的方向向量
-                2）后续的尝试，生成与反向的方向向量的夹角小于 90° 的方向向量
+                默认的生成方向向量的策略：
+                   生成与反向的方向向量的夹角小于 90° 的方向向量
                 :param currAircraft:            当前飞行器
                 :param collisionWithAircraft:   与其相撞的飞行器
                 :param tryNumber:               尝试次数
@@ -43,23 +42,20 @@ class Controller:
                 """
                 caCoordinate = currAircraft.currCoordinate
                 newDV = calculateDirectionVector(collisionWithAircraft.currCoordinate, caCoordinate)
-                if 1 == tryNumber:
-                    return newDV
-                else:
-                    while True:
-                        x = random.uniform(caCoordinate.x - 1, caCoordinate.x + 1)
-                        y = random.uniform(caCoordinate.y - 1, caCoordinate.y + 1)
-                        z = random.uniform(caCoordinate.z - 1, caCoordinate.z + 1)
-                        anotherDV = calculateDirectionVector(caCoordinate, Coordinate(x, y, z))
-                        angle = calculateVectorAngle(newDV, anotherDV)
-                        if angle < 90:
-                            return anotherDV
+                while True:
+                    x = random.uniform(caCoordinate.x - 1, caCoordinate.x + 1)
+                    y = random.uniform(caCoordinate.y - 1, caCoordinate.y + 1)
+                    z = random.uniform(caCoordinate.z - 1, caCoordinate.z + 1)
+                    anotherDV = calculateDirectionVector(caCoordinate, Coordinate(x, y, z))
+                    angle = calculateVectorAngle(newDV, anotherDV)
+                    if angle < 90:
+                        return anotherDV
 
             self.generateDVPolicy = defaultGenerateDVPolicy
         else:
             self.generateDVPolicy = generateDVPolicy
 
-        # self._view = View(80, self.aircrafts)
+        self._view = View(100, self.aircrafts)
 
     def _isExistCollision(self, distance):
         return self.distanceThreshold > distance
@@ -171,7 +167,7 @@ class Controller:
                                 currAircraft.addTrackCoordinate()
                                 currAircraft.setCurrCoordinateByObj(tmpTargetCoordinate)
                                 mobile.append(currAircraft)
-                                # logger.info("[to mobile] id: %s, from: %s, to: %s", currAircraft.id, caCurrCoordinate, tmpTargetCoordinate)
+                                logger.info("[to mobile] id: %s, from: %s, to: %s", currAircraft.id, caCurrCoordinate, tmpTargetCoordinate)
                     time.sleep(this.t)
 
                 deleteTrackIsContinue = True
@@ -186,7 +182,7 @@ class Controller:
                     aircraft.popFinalTargetCoordinate()
 
                 # TODO 硬编码
-                time.sleep(5)
+                time.sleep(2)
 
         threading.Thread(target=_refresh, name="refresh", kwargs={"this": self}).start()
-        # self._view.start()
+        self._view.start()
