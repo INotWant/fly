@@ -91,6 +91,8 @@ def calculateTheNearestDistanceFor2PathWithinSpecialTime(
         ret = c
     else:
         ret = c - b ** 2 / (4 * a)
+    if abs(ret) < 1e-8:
+        ret = 0
     return math.sqrt(ret)
 
 
