@@ -4,11 +4,12 @@ from Aircraft import Aircraft
 from Controller import Controller
 
 if __name__ == '__main__':
-    distanceThreshold = 0.1
+    distanceThreshold = 0.05
     # designPath = "data/design/heart.json"
     # designPath = "data/design/double_heart.json"
     # designPath = "data/design/font_2.json"
-    designPath = "data/design/blessMotherland.json"
+    # designPath = "data/design/blessMotherland.json"
+    designPath = "data/design/1024.json"
     with open(designPath, "r") as f:
         design = json.load(f)
     startCoordinates = design["start"]
@@ -16,7 +17,7 @@ if __name__ == '__main__':
 
     aircrafts = []
     for i in range(len(startCoordinates)):
-        aircraft = Aircraft(i, trackMaxLength=1)
+        aircraft = Aircraft(i)
         startCoordinate = startCoordinates[i]
         aircraft.setCurrCoordinate(startCoordinate[0], startCoordinate[1], startCoordinate[2])
         for j in range(len(targetCoordinatesArr)):
@@ -24,5 +25,5 @@ if __name__ == '__main__':
             aircraft.addFinalTargetCoordinate(targetCoordinate[0], targetCoordinate[1], targetCoordinate[2])
         aircrafts.append(aircraft)
 
-    controller = Controller(distanceThreshold, aircrafts, t=0.5, v=5)
+    controller = Controller(distanceThreshold, aircrafts, singleMovementDistance=1)
     controller.start()

@@ -1,3 +1,4 @@
+import time
 import logging
 from tkinter import *
 from tkinter import messagebox
@@ -8,6 +9,8 @@ from mpl_toolkits.mplot3d import Axes3D
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+showLogger = {"draw": False}
 
 
 class View:
@@ -35,22 +38,28 @@ class View:
 
     def start(self):
         def drawTrack():
+            startTime = time.time()
             self.ax.clear()
             self.ax.set_xlim(self._xLim[0], self._xLim[1])
             self.ax.set_ylim(self._yLim[0], self._yLim[1])
             self.ax.set_zlim(self._zLim[0], self._zLim[1])
             self.ax.axis("off")
             self.ax.view_init(0, 0)
+            if showLogger.get("draw"):
+                logger.info("[draw] cost time0: %s", int((time.time() - startTime) * 1000))
+            xs, ys, zs = [], [], []
             for aircraft in self.aircrafts:
-                xs, ys, zs = aircraft.getTrackCoordinates()
-                if len(xs) == 1:
-                    self.ax.scatter(xs, ys, zs, s=5)
-                else:
-                    self.ax.plot3D(xs, ys, zs)
-
+                x, y, z = aircraft.getTrackCoordinates()
+                xs.append(x)
+                ys.append(y)
+                zs.append(z)
+            if showLogger.get("draw"):
+                logger.info("[draw] cost time1: %s", int((time.time() - startTime) * 1000))
+            self.ax.scatter(xs, ys, zs, c="coral", s=5)
             self.canvas.draw()
             self.afterHandler = self.root.after(self.timeInterval, drawTrack)
-            # logger.info("=== DRAW SUCCESS ====")
+            if showLogger.get("draw"):
+                logger.info("[draw] cost time2: %s", int((time.time() - startTime) * 1000))
 
         drawTrack()
 

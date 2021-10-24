@@ -12,23 +12,26 @@ from View import View
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+showLogger = {"collision": False, "to immobile": False, "to mobile": False, "controller": False}
+
 
 class Controller:
-    __slots__ = ("aircrafts", "distanceThreshold", "tryMaxNumber", "generateDVPolicy", "t", "v", "_isOrder", "_view")
+    __slots__ = (
+        "aircrafts", "distanceThreshold", "tryMaxNumber", "generateDVPolicy", "singleMovementDistance",
+        "_isOrder", "_view", "_trackMaxLength", "_timeInterval"
+    )
 
-    def __init__(self, distanceThreshold, aircrafts, t=1, v=1, tryMaxNumber=10, generateDVPolicy=None):
+    def __init__(self, distanceThreshold, aircrafts, singleMovementDistance=1, tryMaxNumber=10, generateDVPolicy=None):
         """
         :param distanceThreshold: 距离阈值，当两个 aircraft 小于此阈值时便认为会发生碰撞
-        :param t: 时间间隔
-        :param v: 速度
+        :param singleMovementDistance: 单次移动距离
         :param tryMaxNumber: 通过改变 方向向量 避免碰撞的尝试次数
         :param generateDVPolicy: 生成 方向向量 的策略
         """
         self.aircrafts = aircrafts
         self._isOrder = False
         self.distanceThreshold = distanceThreshold
-        self.t = t
-        self.v = v
+        self.singleMovementDistance = singleMovementDistance
         self.tryMaxNumber = tryMaxNumber
         if generateDVPolicy is None:
             def defaultGenerateDVPolicy(currAircraft, collisionWithAircraft, tryNumber):
@@ -55,7 +58,9 @@ class Controller:
         else:
             self.generateDVPolicy = generateDVPolicy
 
-        self._view = View(100, self.aircrafts)
+        self._trackMaxLength = 10
+        self._timeInterval = 50
+        self._view = View(self._timeInterval, self.aircrafts)
 
     def _isExistCollision(self, distance):
         return self.distanceThreshold > distance
@@ -67,9 +72,10 @@ class Controller:
             nearestDistance = calculateTheNearestDistanceFor2PathWithinSpecialTime(
                 caStartCoordinate, caDirectionVector,
                 maCurrCoordinate, calculateDirectionVector(maCurrCoordinate, maTmpCoordinate),
-                self.t * self.v)
+                self.singleMovementDistance)
             if self._isExistCollision(nearestDistance):
-                logger.info("[collision] %s with %s, distance: %s", currId, mAircraft.id, nearestDistance)
+                if showLogger.get("collision"):
+                    logger.info("[collision] %s with %s, distance: %s", currId, mAircraft.id, nearestDistance)
                 return True
         return False
 
@@ -79,9 +85,10 @@ class Controller:
             nearestDistance = calculateTheNearestDistanceFor1PathWithinSpecialTime(
                 caStartCoordinate, directionVector,
                 mAircraftCurrCoordinate,
-                self.t * self.v)
+                self.singleMovementDistance)
             if self._isExistCollision(nearestDistance):
-                logger.info("[collision] %s with %s, distance: %s", currId, iAircraft.id, nearestDistance)
+                if showLogger.get("collision"):
+                    logger.info("[collision] %s with %s, distance: %s", currId, iAircraft.id, nearestDistance)
                 return True, iAircraft
         return False, None
 
@@ -91,6 +98,9 @@ class Controller:
                 # wait, mobile, immobile = 等待操作队列，本次移动队列，本次不再移动队列
                 mobile, immobile, wait = ([], [], [])
                 while len(immobile) < len(this.aircrafts):
+                    while this.aircrafts[0].getTrackNumber() > this._trackMaxLength:
+                        time.sleep(float(this._timeInterval) // 1000)
+                    startTime = time.time()
                     if not this._isOrder:
                         this.aircrafts.sort(key=lambda aircraft: aircraft.id)
                         this._isOrder = True
@@ -110,18 +120,23 @@ class Controller:
                         caDirectionVector = calculateDirectionVector(caCurrCoordinate, caFinalCoordinate)
                         # 0. 判断是否已到达目的地，若到达则不再动
                         if caCurrCoordinate == caFinalCoordinate:
+                            currAircraft.setTmpTargetCoordinateByObj(caCurrCoordinate)
+                            currAircraft.addTrackCoordinate()
                             immobile.append(currAircraft)
-                            logger.info("[to immobile] id: %s, arrive", currAircraft.id)
+                            if showLogger.get("to immobile"):
+                                logger.info("[to immobile] id: %s, arrive", currAircraft.id)
                             continue
                         # 1. 要与已确定会移动的一一比较，查看是否会碰撞，若会则直接将其移至 immobile 队列
-                        existCollision = this._existCollisionWithMobileAircrafts(currAircraft.id, caCurrCoordinate,
-                                                                                 caDirectionVector, mobile)
+                        existCollision = this._existCollisionWithMobileAircrafts(
+                            currAircraft.id, caCurrCoordinate, caDirectionVector, mobile
+                        )
                         if existCollision:
                             currAircraft.setTmpTargetCoordinateByObj(caCurrCoordinate)
                             currAircraft.addTrackCoordinate()
                             immobile.append(currAircraft)
-                            logger.info("[to immobile] id: %s, because: CM, coordinate: %s", currAircraft.id,
-                                        caCurrCoordinate)
+                            if showLogger.get("to immobile"):
+                                logger.info("[to immobile] id: %s, because: CM, coordinate: %s", currAircraft.id,
+                                            caCurrCoordinate)
                             continue
                         # 2. 满足不会与移动的碰撞，则进入后续处理流程 -- 判断与不动的是否碰撞（wait 队列里的也被假设为是不动的）
                         #   若存在碰撞，则通过随机方向向量的方式避免碰撞。超过尝试次数，则直接将其移至 immobile 队列
@@ -144,8 +159,9 @@ class Controller:
                                         currAircraft.setTmpTargetCoordinateByObj(caCurrCoordinate)
                                         currAircraft.addTrackCoordinate()
                                         immobile.append(currAircraft)
-                                        logger.info("[to immobile] id: %s, because: CIM & try fail, coordinate: %s",
-                                                    currAircraft.id, caCurrCoordinate)
+                                        if showLogger.get("to immobile"):
+                                            logger.info("[to immobile] id: %s, because: CIM & try fail, coordinate: %s",
+                                                        currAircraft.id, caCurrCoordinate)
                                         # 设置 isPass 为 True 来跳出多层
                                         isPass = True
                                         break
@@ -158,7 +174,7 @@ class Controller:
                                         break
                             else:
                                 tmpTargetCoordinate = calculateEndPoint(caCurrCoordinate, caDirectionVector,
-                                                                        this.t * self.v)
+                                                                        self.singleMovementDistance)
                                 # tryNumber == 0 时，三点才共线
                                 if tryNumber == 0 and not isOnTheLine(caCurrCoordinate, caFinalCoordinate,
                                                                       tmpTargetCoordinate):
@@ -167,22 +183,21 @@ class Controller:
                                 currAircraft.addTrackCoordinate()
                                 currAircraft.setCurrCoordinateByObj(tmpTargetCoordinate)
                                 mobile.append(currAircraft)
-                                logger.info("[to mobile] id: %s, from: %s, to: %s", currAircraft.id, caCurrCoordinate, tmpTargetCoordinate)
-                    time.sleep(this.t)
+                                if showLogger.get("to mobile"):
+                                    logger.info("[to mobile] id: %s, from: %s, to: %s", currAircraft.id,
+                                                caCurrCoordinate, tmpTargetCoordinate)
 
-                deleteTrackIsContinue = True
-                while deleteTrackIsContinue:
-                    deleteTrackIsContinue = False
-                    for aircraft in this.aircrafts:
-                        if aircraft.deleteOneTrackCoordinate():
-                            deleteTrackIsContinue = True
-                    time.sleep(this.t)
+                    if showLogger.get("controller"):
+                        logger.info("[controller] cost time: %s", int((time.time() - startTime) * 1000))
+
+                while this.aircrafts[0].getTrackNumber() > 1:
+                    time.sleep(this._timeInterval // 1000)
 
                 for aircraft in this.aircrafts:
                     aircraft.popFinalTargetCoordinate()
 
                 # TODO 硬编码
-                time.sleep(2)
+                time.sleep(1)
 
         threading.Thread(target=_refresh, name="refresh", kwargs={"this": self}).start()
         self._view.start()
